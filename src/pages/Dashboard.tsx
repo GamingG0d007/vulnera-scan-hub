@@ -91,14 +91,20 @@ const Dashboard = () => {
 
       {/* Search Bar */}
       <Card className="p-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search for vulnerabilities (CVE ID, keywords, etc)"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex gap-3 max-w-2xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search for vulnerabilities (CVE ID, keywords, etc)"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Button>
+            <Search className="h-4 w-4 mr-2" />
+            Search
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground mt-2">
           Enter a CVE ID, package name, or keywords to search across multiple vulnerability databases.
