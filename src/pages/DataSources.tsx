@@ -44,7 +44,7 @@ const DataSources = () => {
       name: 'GitHub Advisory',
       description: 'GitHub Security Advisories',
       type: 'API',
-      status: 'Pending',
+      status: 'Disconnected',
       lastSync: '2024-01-14T16:20:00Z',
       url: 'https://api.github.com',
       recordCount: 45123,
