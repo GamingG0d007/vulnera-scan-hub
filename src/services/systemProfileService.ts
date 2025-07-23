@@ -66,6 +66,21 @@ class SystemProfileService {
         return parsed as SystemProfile;
       }
       
+      // Check if it's a combined format with nested systemProfile and applicationInventory
+      if (parsed.data?.systemProfile && parsed.data?.applicationInventory) {
+        // For now, prioritize the application inventory since it contains vulnerability counts
+        const appData = parsed.data.applicationInventory;
+        const transformedAppInventory: ApplicationInventory = {
+          status: 'success',
+          data: {
+            totalApplications: appData.totalApplications,
+            lastScanned: appData.lastScanned,
+            applications: appData.applications
+          }
+        };
+        return transformedAppInventory;
+      }
+      
       // Check if it's a system profile (alternative format)
       if (parsed.scanType === 'systemProfile' && parsed.components) {
         // Transform to expected format
@@ -89,7 +104,7 @@ class SystemProfileService {
         return transformedProfile;
       }
       
-      // Check if it's an application inventory
+      // Check if it's an application inventory (original format)
       if (parsed.data?.totalApplications && parsed.data?.applications) {
         return parsed as ApplicationInventory;
       }
