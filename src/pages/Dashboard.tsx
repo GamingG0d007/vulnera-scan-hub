@@ -236,9 +236,33 @@ const Dashboard = () => {
                   <p className="text-sm text-muted-foreground">Upload scan results from your vulnerability scanner</p>
                 </div>
               </div>
-              <Button className="w-full" variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Scan Results
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={handleUploadClick}
+                disabled={uploadStatus === 'uploading'}
+              >
+                {uploadStatus === 'uploading' ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Uploading...
+                  </>
+                ) : uploadStatus === 'success' ? (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Uploaded!
+                  </>
+                ) : uploadStatus === 'error' ? (
+                  <>
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Error
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Scan Results
+                  </>
+                )}
               </Button>
             </div>
           </Card>
