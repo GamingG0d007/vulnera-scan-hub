@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StatCard } from '@/components/StatCard';
 import { VulnerabilityCard } from '@/components/VulnerabilityCard';
 import { Card } from '@/components/ui/card';
@@ -11,7 +11,8 @@ import {
   CheckCircle,
   Search,
   RefreshCw,
-  Upload
+  Upload,
+  FileText
 } from 'lucide-react';
 
 interface VulnerabilityStats {
@@ -33,6 +34,28 @@ const Dashboard = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [lastUpdated] = useState(new Date().toLocaleDateString());
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'application/json') {
+      setUploadStatus('uploading');
+      
+      // Simulate upload process
+      setTimeout(() => {
+        setUploadStatus('success');
+        setTimeout(() => setUploadStatus('idle'), 3000);
+      }, 2000);
+    } else {
+      setUploadStatus('error');
+      setTimeout(() => setUploadStatus('idle'), 3000);
+    }
+  };
 
   const mockVulnerabilities = [
     {
@@ -82,10 +105,40 @@ const Dashboard = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button size="sm">
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Scan
+          <Button 
+            size="sm" 
+            onClick={handleUploadClick}
+            disabled={uploadStatus === 'uploading'}
+          >
+            {uploadStatus === 'uploading' ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Uploading...
+              </>
+            ) : uploadStatus === 'success' ? (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Uploaded!
+              </>
+            ) : uploadStatus === 'error' ? (
+              <>
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                Error
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Scan
+              </>
+            )}
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+          />
         </div>
       </div>
 
