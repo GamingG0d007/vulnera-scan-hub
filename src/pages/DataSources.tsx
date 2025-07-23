@@ -12,10 +12,38 @@ import {
   ExternalLink,
   Globe,
   Server,
-  Cloud
+  Cloud,
+  Upload,
+  FileText
 } from 'lucide-react';
+import { useState } from 'react';
 
 const DataSources = () => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      setUploadStatus('idle');
+    }
+  };
+
+  const handleUploadSubmit = () => {
+    if (!selectedFile) return;
+    
+    setUploadStatus('uploading');
+    
+    // Simulate upload process
+    setTimeout(() => {
+      setUploadStatus('success');
+      setSelectedFile(null);
+      // Reset file input
+      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+    }, 2000);
+  };
   const dataSources = [
     {
       id: 'nvd',
@@ -300,6 +328,94 @@ const DataSources = () => {
             <Button>Save Configuration</Button>
             <Button variant="outline">Test Connection</Button>
           </div>
+        </div>
+      </Card>
+
+      {/* File Upload Section */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold text-foreground mb-4">Upload Scan Results</h2>
+        <p className="text-muted-foreground mb-6">
+          Upload vulnerability scan results from your internal scanner or third-party tools.
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Select File
+            </label>
+            <div className="flex items-center space-x-3">
+              <Input 
+                id="file-upload"
+                type="file"
+                accept=".json,.xml,.csv"
+                onChange={handleFileUpload}
+                className="flex-1"
+              />
+              {selectedFile && (
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <FileText className="h-4 w-4" />
+                  <span>{selectedFile.name}</span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Supported formats: JSON, XML, CSV (max 10MB)
+            </p>
+          </div>
+
+          {selectedFile && (
+            <div className="p-4 bg-accent/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Ready to upload:</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                  </p>
+                </div>
+                <Button 
+                  onClick={handleUploadSubmit}
+                  disabled={uploadStatus === 'uploading'}
+                  size="sm"
+                >
+                  {uploadStatus === 'uploading' ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload File
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {uploadStatus === 'success' && (
+            <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
+              <div className="flex items-center space-x-2 text-success">
+                <CheckCircle className="h-4 w-4" />
+                <p className="text-sm font-medium">File uploaded successfully!</p>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Scan results have been processed and added to the vulnerability database.
+              </p>
+            </div>
+          )}
+
+          {uploadStatus === 'error' && (
+            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="flex items-center space-x-2 text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <p className="text-sm font-medium">Upload failed</p>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Please check the file format and try again.
+              </p>
+            </div>
+          )}
         </div>
       </Card>
     </div>
