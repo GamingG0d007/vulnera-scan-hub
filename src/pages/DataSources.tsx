@@ -60,6 +60,17 @@ const DataSources = () => {
       url: 'Internal System',
       recordCount: 892,
       icon: <Server className="h-5 w-5" />
+    },
+    {
+      id: 'osv',
+      name: 'OSV',
+      description: 'Open Source Vulnerabilities Database',
+      type: 'API',
+      status: 'Disconnected',
+      lastSync: '2024-01-10T14:30:00Z',
+      url: 'https://osv.dev',
+      recordCount: 156789,
+      icon: <Database className="h-5 w-5" />
     }
   ];
 
