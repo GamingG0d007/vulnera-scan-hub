@@ -347,7 +347,7 @@ const DataSources = () => {
               <Input 
                 id="file-upload"
                 type="file"
-                accept=".json,.xml,.csv"
+                accept=".json"
                 onChange={handleFileUpload}
                 className="flex-1"
               />
@@ -359,7 +359,7 @@ const DataSources = () => {
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              Supported formats: JSON, XML, CSV (max 10MB)
+              Supported formats: JSON only (max 10MB)
             </p>
           </div>
 
