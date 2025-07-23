@@ -61,9 +61,32 @@ class SystemProfileService {
         return parsed as ScanError;
       }
       
-      // Check if it's a system profile
+      // Check if it's a system profile (original format)
       if (parsed.data?.osName && parsed.data?.systemComponents) {
         return parsed as SystemProfile;
+      }
+      
+      // Check if it's a system profile (alternative format)
+      if (parsed.scanType === 'systemProfile' && parsed.components) {
+        // Transform to expected format
+        const transformedProfile: SystemProfile = {
+          status: 'success',
+          data: {
+            osName: parsed.os,
+            osVersion: parsed.osVersion,
+            architecture: parsed.architecture || 'unknown',
+            kernelVersion: parsed.kernelVersion || 'unknown',
+            hostname: parsed.hostname,
+            lastBoot: parsed.timestamp || new Date().toISOString(),
+            systemComponents: parsed.components.map((comp: any) => ({
+              name: comp.name,
+              version: comp.version,
+              type: comp.type as 'kernel' | 'driver' | 'service' | 'library' | 'runtime',
+              description: comp.description || `${comp.type} component`
+            }))
+          }
+        };
+        return transformedProfile;
       }
       
       // Check if it's an application inventory
