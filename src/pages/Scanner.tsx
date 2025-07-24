@@ -230,7 +230,22 @@ const Scanner = () => {
         title: "Scanner Connected",
         description: "Successfully connected to the scanner API",
       });
-      
+
+      // If the response is JSON, process it as scan results (same as processScanResults)
+      if (data) {
+        // If the data is an array, treat as vulnerabilities
+        if (Array.isArray(data)) {
+          setVulnerabilities(data);
+        } else {
+          // If not an array, try to extract vulnerabilities or show a warning
+          setVulnerabilities([]);
+          toast({
+            title: "No Vulnerabilities Found",
+            description: "The scanner did not return any vulnerabilities.",
+            variant: "destructive",
+          });
+        }
+      }
       // Handle the response data as needed
       console.log('Scanner response:', data);
       
@@ -538,33 +553,23 @@ const Scanner = () => {
                                 <Checkbox
                                   checked={
                                     'applications' in result.data
-                                      ? result.data.applications.every(app => selectedItems.has(`${index}-${app.id}`))
+                                      ? result.data.applications.every(app => checkedApps[app.name])
                                       : 'systemComponents' in result.data
-                                      ? result.data.systemComponents.every(comp => selectedItems.has(`${index}-${comp.name}`))
+                                      ? result.data.systemComponents.every(comp => checkedApps[comp.name])
                                       : false
                                   }
                                   onCheckedChange={(checked) => {
-                                    const newSelected = new Set(selectedItems);
+                                    const newChecked: { [key: string]: boolean } = {};
                                     if ('applications' in result.data) {
                                       result.data.applications.forEach(app => {
-                                        const id = `${index}-${app.id}`;
-                                        if (checked) {
-                                          newSelected.add(id);
-                                        } else {
-                                          newSelected.delete(id);
-                                        }
+                                        newChecked[app.name] = checked;
                                       });
                                     } else if ('systemComponents' in result.data) {
                                       result.data.systemComponents.forEach(comp => {
-                                        const id = `${index}-${comp.name}`;
-                                        if (checked) {
-                                          newSelected.add(id);
-                                        } else {
-                                          newSelected.delete(id);
-                                        }
+                                        newChecked[comp.name] = checked;
                                       });
                                     }
-                                    setSelectedItems(newSelected);
+                                    setCheckedApps(newChecked);
                                   }}
                                 />
                               </TableHead>
@@ -585,11 +590,11 @@ const Scanner = () => {
                           <TableBody>
                             {'applications' in result.data ? (
                               result.data.applications.map((app) => {
-                                const itemId = `${index}-${app.id}`;
                                 return (
                                   <TableRow key={app.id}>
                                     <TableCell>
                                       <Checkbox
+                                        checked={checkedApps[app.name]}
                                         checked={selectedItems.has(itemId)}
                                         onCheckedChange={(checked) => {
                                           const newSelected = new Set(selectedItems);

@@ -92,21 +92,47 @@ const Search = () => {
 
     setIsLoading(true);
     try {
-      const response = await nvdApi.searchVulnerabilities({
-        keywordSearch: searchTerm,
-        resultsPerPage: 20
-      });
+      // Split searchTerm by spaces or commas, filter out empty strings
+      const keywords = searchTerm
+        .split(/[,\s]+/)
+        .map(s => s.trim())
+        .filter(Boolean);
+      
+      // If only one keyword, use the original logic
+      let allVulns = [];
+      let total = 0;
+      if (keywords.length === 1) {
+        const response = await nvdApi.searchVulnerabilities({
+          keywordSearch: keywords[0],
+          resultsPerPage: 20
+        });
+        allVulns = response.vulnerabilities.map(vuln => nvdApi.formatVulnerability(vuln));
+        total = response.totalResults;
+      } else {
+        // For multiple keywords, fetch in parallel and merge results
+        const responses = await Promise.all(
+          keywords.map(keyword =>
+            nvdApi.searchVulnerabilities({ keywordSearch: keyword, resultsPerPage: 20 })
+          )
+        );
+        // Flatten and deduplicate by CVE
+        const vulnMap = new Map();
+        responses.forEach(response => {
+          response.vulnerabilities.forEach(vuln => {
+            const formatted = nvdApi.formatVulnerability(vuln);
+            vulnMap.set(formatted.cve, formatted);
+          });
+        });
+        allVulns = Array.from(vulnMap.values());
+        total = allVulns.length;
+      }
 
-      const formattedResults = response.vulnerabilities.map(vuln => 
-        nvdApi.formatVulnerability(vuln)
-      );
-
-      setResults(formattedResults);
-      setTotalResults(response.totalResults);
+      setResults(allVulns);
+      setTotalResults(total);
       
       toast({
         title: "Search Complete",
-        description: `Found ${response.totalResults} vulnerabilities`,
+        description: `Found ${total} vulnerabilities`,
       });
     } catch (error) {
       console.error('Search error:', error);

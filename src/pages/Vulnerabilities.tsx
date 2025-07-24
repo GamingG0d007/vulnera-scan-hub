@@ -311,6 +311,63 @@ const Vulnerabilities = () => {
           </div>
         </Card>
       )}
+
+      {/* Show NVD API search results if present */}
+      {nvdResults.length > 0 && (
+        <div className="space-y-4 mt-8">
+          <h2 className="text-xl font-semibold text-foreground">
+            Search Results ({nvdResults.length} found)
+          </h2>
+          <div className="grid gap-6">
+            {nvdResults.map((result) => (
+              <VulnerabilityCard
+                key={result.cve}
+                {...result}
+                pinned={!!pinned.find((v: any) => v.cve === result.cve)}
+                onPin={() => handlePin(result)}
+                onUnpin={() => handleUnpin(result.cve)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Show error or no results message if search attempted but no results */}
+      {error && (
+        <Card className="p-12 text-center mt-8">
+          <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-destructive mb-2">{error}</h3>
+        </Card>
+      )}
+      {!isLoading && searchTerm && nvdResults.length === 0 && !error && (
+        <Card className="p-12 text-center mt-8">
+          <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">No vulnerabilities found</h3>
+          <p className="text-muted-foreground">
+            Try searching with different keywords or check your spelling.
+          </p>
+        </Card>
+      )}
+
+      {/* Show mock vulnerabilities if no API results and no search term */}
+      {nvdResults.length === 0 && !searchTerm && (
+        <div className="space-y-4 mt-8">
+          <h2 className="text-xl font-semibold text-foreground">
+            Example Vulnerabilities
+          </h2>
+          <div className="grid gap-6">
+            {filteredVulnerabilities.map((vuln) => (
+              <VulnerabilityCard
+                key={vuln.cve}
+                {...vuln}
+                pinned={!!pinned.find((v: any) => v.cve === vuln.cve)}
+                onPin={() => handlePin(vuln)}
+                onUnpin={() => handleUnpin(vuln.cve)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
