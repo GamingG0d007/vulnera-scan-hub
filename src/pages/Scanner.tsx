@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { 
   Upload, 
   FileText, 
@@ -22,6 +31,7 @@ const Scanner = () => {
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [vulnerabilities, setVulnerabilities] = useState<any[]>([]);
+<<<<<<< HEAD
   const [appTable, setAppTable] = useState<any[]>([]); // Applications from uploaded JSON
   const [checkedApps, setCheckedApps] = useState<{ [key: string]: boolean }>({});
   const [nvdResults, setNvdResults] = useState<any[]>([]);
@@ -29,6 +39,9 @@ const Scanner = () => {
   const [visibleRows, setVisibleRows] = useState(11);
   const [isConnecting, setIsConnecting] = useState(false);
   const [scannerStatus, setScannerStatus] = useState<string>('');
+=======
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+>>>>>>> 8bc1d98d7b974b33ff787ef36e7c71fea95b0a6c
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -483,19 +496,21 @@ const Scanner = () => {
       {scanResults.length > 0 && (
         <Card className="p-6">
           <h2 className="text-xl font-semibold text-foreground mb-4">Scan Results</h2>
-          <div className="space-y-4">
+          <div className="space-y-6">
             {scanResults.map((result, index) => (
-              <div key={index} className="p-4 rounded-lg border border-border">
+              <div key={index}>
                 {result.status === 'error' ? (
-                  <div className="flex items-center space-x-3">
-                    <AlertTriangle className="h-5 w-5 text-destructive" />
-                    <div>
-                      <p className="font-medium text-foreground">Error: {'error' in result ? result.error.code : 'Unknown error'}</p>
-                      <p className="text-sm text-muted-foreground">{'error' in result ? result.error.message : 'An error occurred'}</p>
+                  <div className="p-4 rounded-lg border border-border">
+                    <div className="flex items-center space-x-3">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                      <div>
+                        <p className="font-medium text-foreground">Error: {'error' in result ? result.error.code : 'Unknown error'}</p>
+                        <p className="text-sm text-muted-foreground">{'error' in result ? result.error.message : 'An error occurred'}</p>
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <CheckCircle className="h-5 w-5 text-success" />
@@ -516,6 +531,131 @@ const Scanner = () => {
                         {result.status}
                       </Badge>
                     </div>
+
+                    {/* Table for applications or components */}
+                    {'data' in result && (
+                      <div className="border border-border rounded-lg">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12">
+                                <Checkbox
+                                  checked={
+                                    'applications' in result.data
+                                      ? result.data.applications.every(app => selectedItems.has(`${index}-${app.id}`))
+                                      : 'systemComponents' in result.data
+                                      ? result.data.systemComponents.every(comp => selectedItems.has(`${index}-${comp.name}`))
+                                      : false
+                                  }
+                                  onCheckedChange={(checked) => {
+                                    const newSelected = new Set(selectedItems);
+                                    if ('applications' in result.data) {
+                                      result.data.applications.forEach(app => {
+                                        const id = `${index}-${app.id}`;
+                                        if (checked) {
+                                          newSelected.add(id);
+                                        } else {
+                                          newSelected.delete(id);
+                                        }
+                                      });
+                                    } else if ('systemComponents' in result.data) {
+                                      result.data.systemComponents.forEach(comp => {
+                                        const id = `${index}-${comp.name}`;
+                                        if (checked) {
+                                          newSelected.add(id);
+                                        } else {
+                                          newSelected.delete(id);
+                                        }
+                                      });
+                                    }
+                                    setSelectedItems(newSelected);
+                                  }}
+                                />
+                              </TableHead>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Version</TableHead>
+                              <TableHead>Type</TableHead>
+                              {'applications' in result.data ? (
+                                <>
+                                  <TableHead>Publisher</TableHead>
+                                  <TableHead>Install Date</TableHead>
+                                  <TableHead>Vulnerabilities</TableHead>
+                                </>
+                              ) : (
+                                <TableHead>Description</TableHead>
+                              )}
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {'applications' in result.data ? (
+                              result.data.applications.map((app) => {
+                                const itemId = `${index}-${app.id}`;
+                                return (
+                                  <TableRow key={app.id}>
+                                    <TableCell>
+                                      <Checkbox
+                                        checked={selectedItems.has(itemId)}
+                                        onCheckedChange={(checked) => {
+                                          const newSelected = new Set(selectedItems);
+                                          if (checked) {
+                                            newSelected.add(itemId);
+                                          } else {
+                                            newSelected.delete(itemId);
+                                          }
+                                          setSelectedItems(newSelected);
+                                        }}
+                                      />
+                                    </TableCell>
+                                    <TableCell className="font-medium">{app.name}</TableCell>
+                                    <TableCell>{app.version}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="secondary">Application</Badge>
+                                    </TableCell>
+                                    <TableCell>{app.publisher || 'Unknown'}</TableCell>
+                                    <TableCell>{app.installDate || 'Unknown'}</TableCell>
+                                    <TableCell>
+                                      {app.vulnerabilityCount > 0 ? (
+                                        <Badge variant="destructive">{app.vulnerabilityCount}</Badge>
+                                      ) : (
+                                        <Badge variant="outline">0</Badge>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            ) : 'systemComponents' in result.data ? (
+                              result.data.systemComponents.map((comp) => {
+                                const itemId = `${index}-${comp.name}`;
+                                return (
+                                  <TableRow key={comp.name}>
+                                    <TableCell>
+                                      <Checkbox
+                                        checked={selectedItems.has(itemId)}
+                                        onCheckedChange={(checked) => {
+                                          const newSelected = new Set(selectedItems);
+                                          if (checked) {
+                                            newSelected.add(itemId);
+                                          } else {
+                                            newSelected.delete(itemId);
+                                          }
+                                          setSelectedItems(newSelected);
+                                        }}
+                                      />
+                                    </TableCell>
+                                    <TableCell className="font-medium">{comp.name}</TableCell>
+                                    <TableCell>{comp.version}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">{comp.type}</Badge>
+                                    </TableCell>
+                                    <TableCell>{comp.description}</TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            ) : null}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
