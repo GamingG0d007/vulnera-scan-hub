@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { StatCard } from '@/components/StatCard';
 import { VulnerabilityCard } from '@/components/VulnerabilityCard';
 import { Card } from '@/components/ui/card';
@@ -12,7 +13,8 @@ import {
   Search,
   RefreshCw,
   Upload,
-  FileText
+  FileText,
+  Loader2
 } from 'lucide-react';
 
 interface VulnerabilityStats {
@@ -36,9 +38,23 @@ const Dashboard = () => {
   const [lastUpdated] = useState(new Date().toLocaleDateString());
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [vulnerabilities, setVulnerabilities] = useState<any[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [pinned, setPinned] = useState<any[]>([]);
+  const navigate = useNavigate();
+
+  // Load pinned from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('pinned_cves');
+    if (stored) {
+      try {
+        setPinned(JSON.parse(stored));
+      } catch {}
+    }
+  }, []);
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    navigate('/scanner');
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,6 +70,46 @@ const Dashboard = () => {
     } else {
       setUploadStatus('error');
       setTimeout(() => setUploadStatus('idle'), 3000);
+    }
+  };
+
+  const processScanResults = async () => {
+    if (!fileInputRef.current || !fileInputRef.current.files || fileInputRef.current.files.length === 0) {
+      setUploadStatus('error');
+      setTimeout(() => setUploadStatus('idle'), 3000);
+      return;
+    }
+    setIsProcessing(true);
+    setUploadStatus('uploading');
+    try {
+      const file = fileInputRef.current.files[0];
+      const content = await file.text();
+      let json;
+      try {
+        json = JSON.parse(content);
+      } catch {
+        setUploadStatus('error');
+        setIsProcessing(false);
+        setTimeout(() => setUploadStatus('idle'), 3000);
+        return;
+      }
+      // Add 10 second delay before fetch
+      await new Promise(resolve => setTimeout(resolve, 10000));
+      const response = await fetch('http://127.0.0.1:8000/api/v1/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ files: [json] }),
+      });
+      if (!response.ok) throw new Error('Failed to scan');
+      const data = await response.json();
+      setVulnerabilities(data.vulnerabilities || []);
+      setUploadStatus('success');
+      setTimeout(() => setUploadStatus('idle'), 3000);
+    } catch {
+      setUploadStatus('error');
+      setTimeout(() => setUploadStatus('idle'), 3000);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -100,46 +156,6 @@ const Dashboard = () => {
             Monitor and track vulnerabilities from multiple sources
           </p>
         </div>
-        <div className="flex items-center space-x-3">
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button 
-            size="sm" 
-            onClick={handleUploadClick}
-            disabled={uploadStatus === 'uploading'}
-          >
-            {uploadStatus === 'uploading' ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Uploading...
-              </>
-            ) : uploadStatus === 'success' ? (
-              <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Uploaded!
-              </>
-            ) : uploadStatus === 'error' ? (
-              <>
-                <AlertTriangle className="h-4 w-4 mr-2" />
-                Error
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Scan
-              </>
-            )}
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-          />
-        </div>
       </div>
 
       {/* Search Bar */}
@@ -165,7 +181,7 @@ const Dashboard = () => {
       </Card>
 
       {/* Statistics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Total Vulnerabilities"
           count={stats.total}
@@ -207,20 +223,29 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Latest Vulnerabilities */}
+      {/* Pinned Vulnerabilities */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-foreground">Latest Vulnerabilities</h2>
-              <Button variant="outline" size="sm">
+              <h2 className="text-xl font-semibold text-foreground">Pinned Vulnerabilities</h2>
+              <Button variant="outline" size="sm" onClick={() => navigate('/vulnerabilities')}>
                 View All
               </Button>
             </div>
             <div className="space-y-4">
-              {mockVulnerabilities.map((vuln) => (
-                <VulnerabilityCard key={vuln.cve} {...vuln} />
-              ))}
+              {pinned.length > 0 ? (
+                pinned.map((cve) => (
+                  <VulnerabilityCard key={cve.cve} {...cve} />
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No pinned vulnerabilities yet.</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Pin vulnerabilities from the Search or Vulnerabilities page to see them here.
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
         </div>
@@ -260,7 +285,7 @@ const Dashboard = () => {
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
-                    Upload Scan Results
+                    Upload Scan
                   </>
                 )}
               </Button>

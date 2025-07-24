@@ -47,26 +47,26 @@ export const StatCard = ({
 }: StatCardProps) => {
   return (
     <Card className={cn(
-      "p-6 border-l-4 hover:shadow-glow transition-all duration-300",
+      "p-4 border-l-4 hover:shadow-glow transition-all duration-300",
       getSeverityStyles(severity)
     )}>
       <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-3xl font-bold text-foreground">{count}</p>
-          <div className="flex items-center space-x-2">
-            <span className={cn("text-sm font-medium", getTrendColor(trend))}>
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold text-foreground">{count}</p>
+          <div className="flex items-center space-x-1">
+            <span className={cn("text-xs font-medium", getTrendColor(trend))}>
               {percentage}
             </span>
             <span className="text-xs text-muted-foreground">vs last week</span>
           </div>
         </div>
         <div className={cn(
-          "p-3 rounded-full",
+          "p-2 rounded-full",
           severity ? `bg-severity-${severity}/20` : 'bg-primary/20'
         )}>
           <Icon className={cn(
-            "h-6 w-6",
+            "h-4 w-4",
             severity ? `text-severity-${severity}` : 'text-primary'
           )} />
         </div>

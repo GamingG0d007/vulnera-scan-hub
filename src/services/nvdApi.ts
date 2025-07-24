@@ -92,10 +92,18 @@ class NVDApiService {
     
     let score = 0;
     let severity = 'Unknown';
-    
     if (cve.metrics?.cvssMetricV31?.[0]) {
       score = cve.metrics.cvssMetricV31[0].cvssData.baseScore;
-      severity = cve.metrics.cvssMetricV31[0].cvssData.baseSeverity;
+      const raw = cve.metrics.cvssMetricV31[0].cvssData.baseSeverity;
+      // Normalize to capitalized
+      if (typeof raw === 'string') {
+        const s = raw.toLowerCase();
+        if (s === 'critical') severity = 'Critical';
+        else if (s === 'high') severity = 'High';
+        else if (s === 'medium') severity = 'Medium';
+        else if (s === 'low') severity = 'Low';
+        else severity = raw;
+      }
     } else if (cve.metrics?.cvssMetricV2?.[0]) {
       score = cve.metrics.cvssMetricV2[0].cvssData.baseScore;
       // Convert CVSS v2 score to severity

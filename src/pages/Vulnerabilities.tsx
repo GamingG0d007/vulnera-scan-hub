@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,12 +20,100 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { nvdApi } from '@/services/nvdApi';
+import { useToast } from '@/hooks/use-toast';
+
+const PINNED_KEY = 'pinned_cves';
 
 const Vulnerabilities = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('published');
+  const [pinned, setPinned] = useState<any[]>([]);
+  const [nvdResults, setNvdResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Load pinned from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(PINNED_KEY);
+    if (stored) {
+      try {
+        setPinned(JSON.parse(stored));
+      } catch {}
+    }
+  }, []);
+
+  // Save pinned to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem(PINNED_KEY, JSON.stringify(pinned));
+  }, [pinned]);
+
+  // Pin/unpin handlers
+  const handlePin = (vuln: any) => {
+    if (!pinned.find((v: any) => v.cve === vuln.cve)) {
+      setPinned([vuln, ...pinned]);
+    }
+  };
+  const handleUnpin = (cve: string) => {
+    setPinned(pinned.filter((v: any) => v.cve !== cve));
+  };
+
+  // Export pinned as JSON
+  const exportPinned = () => {
+    const blob = new Blob([JSON.stringify(pinned, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'pinned-vulnerabilities.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Import pinned from JSON
+  const importPinned = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    file.text().then(text => {
+      try {
+        const arr = JSON.parse(text);
+        if (Array.isArray(arr)) {
+          setPinned(arr);
+        }
+      } catch {}
+    });
+  };
+
+  // Helper: is CVE ID
+  const isCveId = (term: string) => /^CVE-\d{4}-\d{4,}$/.test(term.trim().toUpperCase());
+
+  // Search handler
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setError(null);
+    setNvdResults([]);
+    if (!searchTerm.trim()) return;
+    if (isCveId(searchTerm)) {
+      setIsLoading(true);
+      try {
+        const response = await nvdApi.searchByCVE(searchTerm.trim());
+        const formatted = response.vulnerabilities.map(vuln => nvdApi.formatVulnerability(vuln));
+        setNvdResults(formatted);
+        if (formatted.length === 0) {
+          setError('No results found for this CVE ID.');
+        }
+      } catch (err) {
+        setError('Failed to fetch from NVD.');
+        toast({ title: 'NVD Search Failed', description: 'Could not fetch vulnerability from NVD.', variant: 'destructive' });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
 
   const mockVulnerabilities = [
     {
@@ -143,8 +232,8 @@ const Vulnerabilities = () => {
               className="pl-10"
             />
           </div>
-          <Button>
-            <Search className="h-4 w-4 mr-2" />
+          <Button onClick={handleSearch} disabled={isLoading}>
+            {isLoading ? <span className="animate-spin"><Search className="h-4 w-4 mr-2" /></span> : <Search className="h-4 w-4 mr-2" />}
             Search
           </Button>
         </div>
@@ -193,92 +282,35 @@ const Vulnerabilities = () => {
         </div>
       </Card>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-        {[
-          { label: 'Total', count: mockVulnerabilities.length, color: 'bg-primary' },
-          { label: 'Critical', count: mockVulnerabilities.filter(v => v.severity === 'Critical').length, color: 'bg-severity-critical' },
-          { label: 'High', count: mockVulnerabilities.filter(v => v.severity === 'High').length, color: 'bg-severity-high' },
-          { label: 'Medium', count: mockVulnerabilities.filter(v => v.severity === 'Medium').length, color: 'bg-severity-medium' },
-          { label: 'Low', count: mockVulnerabilities.filter(v => v.severity === 'Low').length, color: 'bg-severity-low' },
-          { label: 'Resolved', count: mockVulnerabilities.filter(v => v.status === 'Resolved').length, color: 'bg-success' }
-        ].map((stat) => (
-          <Card key={stat.label} className="p-4 text-center">
-            <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${stat.color} text-white text-sm font-bold mb-2`}>
-              {stat.count}
+      {/* Only show pinned vulnerabilities section (if any) */}
+      {pinned.length > 0 && (
+        <Card className="p-6 border-2 border-primary/40 mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-primary">Pinned Vulnerabilities</h2>
+            <div className="flex gap-2">
+              <button
+                className="text-xs underline text-primary"
+                onClick={exportPinned}
+                type="button"
+              >Export JSON</button>
+              <label className="text-xs underline text-primary cursor-pointer">
+                Import JSON
+                <input type="file" accept=".json" className="hidden" onChange={importPinned} />
+              </label>
             </div>
-            <p className="text-sm text-muted-foreground">{stat.label}</p>
-          </Card>
-        ))}
-      </div>
-
-      {/* Vulnerabilities Table View */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-foreground">Vulnerabilities</h2>
-          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-            <span>Showing {filteredVulnerabilities.length} of {mockVulnerabilities.length} vulnerabilities</span>
           </div>
-        </div>
-
-        <div className="space-y-4">
-          {filteredVulnerabilities.map((vuln) => (
-            <div key={vuln.cve} className="border border-border rounded-lg p-4 hover:shadow-glow transition-all duration-300">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center space-x-3">
-                  <Badge className={
-                    vuln.severity === 'Critical' ? 'bg-severity-critical' :
-                    vuln.severity === 'High' ? 'bg-severity-high' :
-                    vuln.severity === 'Medium' ? 'bg-severity-medium' : 'bg-severity-low'
-                  }>
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    {vuln.severity}
-                  </Badge>
-                  <Badge variant="outline" className="text-foreground border-border">
-                    CVSS: {vuln.score}
-                  </Badge>
-                  <Badge className={getStatusColor(vuln.status)}>
-                    {vuln.status}
-                  </Badge>
-                </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground hover:text-primary cursor-pointer" />
-              </div>
-
-              <div className="space-y-2">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">{vuln.cve}</h3>
-                  <p className="text-sm text-foreground">{vuln.title}</p>
-                </div>
-
-                <p className="text-sm text-muted-foreground line-clamp-2">{vuln.description}</p>
-
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{new Date(vuln.publishedDate).toLocaleDateString()}</span>
-                    </div>
-                    <span>Source: {vuln.source}</span>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {filteredVulnerabilities.length === 0 && (
-          <div className="text-center py-12">
-            <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No vulnerabilities found</h3>
-            <p className="text-muted-foreground">
-              Try adjusting your search criteria or filters.
-            </p>
+          <div className="space-y-4">
+            {pinned.map((vuln) => (
+              <VulnerabilityCard
+                key={vuln.cve}
+                {...vuln}
+                pinned={true}
+                onUnpin={() => handleUnpin(vuln.cve)}
+              />
+            ))}
           </div>
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 };

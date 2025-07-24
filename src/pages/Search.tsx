@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +7,8 @@ import { VulnerabilityCard } from '@/components/VulnerabilityCard';
 import { Search as SearchIcon, Loader2 } from 'lucide-react';
 import { nvdApi } from '@/services/nvdApi';
 import { useToast } from '@/hooks/use-toast';
+import { StatCard } from '@/components/StatCard';
+import { AlertTriangle, Shield, FileX, CheckCircle } from 'lucide-react';
 
 interface SearchResult {
   cve: string;
@@ -20,15 +23,63 @@ interface SearchResult {
   references: Array<{ url: string; source: string }>;
 }
 
+const PINNED_KEY = 'pinned_cves';
+
 const Search = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [shouldAutoSearch, setShouldAutoSearch] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [totalResults, setTotalResults] = useState(0);
+  const [stats, setStats] = useState({
+    total: 0,
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0,
+  });
   const { toast } = useToast();
+  const location = useLocation();
+  const [pinned, setPinned] = useState<any[]>([]);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Load pinned from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem(PINNED_KEY);
+    if (stored) {
+      try {
+        setPinned(JSON.parse(stored));
+      } catch {}
+    }
+  }, []);
+
+  // Save pinned to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem(PINNED_KEY, JSON.stringify(pinned));
+  }, [pinned]);
+
+  // Update stats based on pinned vulnerabilities
+  useEffect(() => {
+    setStats({
+      total: pinned.length,
+      critical: pinned.filter(v => v.severity === 'Critical').length,
+      high: pinned.filter(v => v.severity === 'High').length,
+      medium: pinned.filter(v => v.severity === 'Medium').length,
+      low: pinned.filter(v => v.severity === 'Low').length,
+    });
+  }, [pinned]);
+
+  // Pin/unpin handlers
+  const handlePin = (vuln: any) => {
+    if (!pinned.find((v: any) => v.cve === vuln.cve)) {
+      setPinned([vuln, ...pinned]);
+    }
+  };
+  const handleUnpin = (cve: string) => {
+    setPinned(pinned.filter((v: any) => v.cve !== cve));
+  };
+
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
     if (!searchTerm.trim()) {
       toast({
@@ -68,6 +119,23 @@ const Search = () => {
       setIsLoading(false);
     }
   };
+
+  // On mount, check for searchTerm in location.state and trigger search
+  useEffect(() => {
+    if (location.state && location.state.searchTerm) {
+      setSearchTerm(location.state.searchTerm);
+      setShouldAutoSearch(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
+  useEffect(() => {
+    if (shouldAutoSearch && searchTerm.trim()) {
+      handleSearch();
+      setShouldAutoSearch(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldAutoSearch, searchTerm]);
 
   return (
     <div className="space-y-8">
@@ -137,6 +205,49 @@ const Search = () => {
         </div>
       </Card>
 
+      {/* Statistics Grid - Now synced with pinned CVEs */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StatCard
+          title="Total Vulnerabilities"
+          count={stats.total}
+          percentage="0%"
+          trend="neutral"
+          icon={Shield}
+        />
+        <StatCard
+          title="Critical"
+          count={stats.critical}
+          percentage="0%"
+          trend="neutral"
+          severity="critical"
+          icon={AlertTriangle}
+        />
+        <StatCard
+          title="High"
+          count={stats.high}
+          percentage="0%"
+          trend="neutral"
+          severity="high"
+          icon={FileX}
+        />
+        <StatCard
+          title="Medium"
+          count={stats.medium}
+          percentage="0%"
+          trend="neutral"
+          severity="medium"
+          icon={AlertTriangle}
+        />
+        <StatCard
+          title="Low"
+          count={stats.low}
+          percentage="0%"
+          trend="neutral"
+          severity="low"
+          icon={CheckCircle}
+        />
+      </div>
+
       {/* Search Results */}
       {totalResults > 0 && (
         <div className="space-y-4">
@@ -150,14 +261,10 @@ const Search = () => {
             {results.map((result) => (
               <VulnerabilityCard
                 key={result.cve}
-                cve={result.cve}
-                title={result.title}
-                severity={result.severity}
-                score={result.score}
-                publishedDate={result.publishedDate}
-                status={result.status}
-                source={result.source}
-                description={result.description}
+                {...result}
+                pinned={!!pinned.find((v: any) => v.cve === result.cve)}
+                onPin={() => handlePin(result)}
+                onUnpin={() => handleUnpin(result.cve)}
               />
             ))}
           </div>
