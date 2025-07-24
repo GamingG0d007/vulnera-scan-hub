@@ -31,7 +31,6 @@ const Scanner = () => {
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [vulnerabilities, setVulnerabilities] = useState<any[]>([]);
-<<<<<<< HEAD
   const [appTable, setAppTable] = useState<any[]>([]); // Applications from uploaded JSON
   const [checkedApps, setCheckedApps] = useState<{ [key: string]: boolean }>({});
   const [nvdResults, setNvdResults] = useState<any[]>([]);
@@ -39,9 +38,6 @@ const Scanner = () => {
   const [visibleRows, setVisibleRows] = useState(11);
   const [isConnecting, setIsConnecting] = useState(false);
   const [scannerStatus, setScannerStatus] = useState<string>('');
-=======
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
->>>>>>> 8bc1d98d7b974b33ff787ef36e7c71fea95b0a6c
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -208,7 +204,7 @@ const Scanner = () => {
     setScannerStatus('');
     
     try {
-      const response = await fetch('http://localhost:3000/scanner/api/v1/scan', {
+      const response = await fetch('http://localhost:8000/api/v1/scan', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
